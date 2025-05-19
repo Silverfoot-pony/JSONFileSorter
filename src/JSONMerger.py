@@ -2,8 +2,8 @@ import os
 import json
 import glob
 
-# Define the main folder path
-main_folder = r"address_to_main_folder"
+# Define the root folder path
+main_folder = r"address_to_root_folder"
 
 # Find all messages.json files recursively
 json_files = glob.glob(os.path.join(main_folder, "**", "filename.json"), recursive=True) #find all filename.json messages to merge.
