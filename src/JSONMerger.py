@@ -1,30 +1,49 @@
 import os
 import json
 import glob
+import argparse
 
-# Define the root folder path
-main_folder = r"address_to_root_folder"
 
-# Find all messages.json files recursively
-json_files = glob.glob(os.path.join(main_folder, "**", "filename.json"), recursive=True) #find all filename.json messages to merge.
+def merge_json(folder, filename, output_file):
+    json_files = glob.glob(os.path.join(folder, "**", filename), recursive=True)
 
-merged_data = []
+    if not json_files:
+        print(f"No files named '{filename}' found under: {folder}")
+        return
 
-# Load and merge JSON files
-for file in json_files:
-    with open(file, "r", encoding="utf-8") as f:
-        try:
-            data = json.load(f)
-            if isinstance(data, list):  # If JSON is a list, extend the merged list
-                merged_data.extend(data)
-            else:  # If JSON is a dict, append it as an entry
-                merged_data.append(data)
-        except json.JSONDecodeError as e:
-            print(f"Error reading {file}: {e}")
+    print(f"Found {len(json_files)} file(s) to merge.")
+    merged_data = []
+    errors = 0
 
-# Save the merged JSON
-output_file = os.path.join(main_folder, "merged_filename.json")
-with open(output_file, "w", encoding="utf-8") as f:
-    json.dump(merged_data, f, indent=4, ensure_ascii=False)
+    for file in json_files:
+        with open(file, 'r', encoding='utf-8') as f:
+            try:
+                data = json.load(f)
+                if isinstance(data, list):
+                    merged_data.extend(data)
+                else:
+                    merged_data.append(data)
+            except json.JSONDecodeError as e:
+                print(f"Skipping {file}: {e}")
+                errors += 1
 
-print(f"Merged JSON saved to {output_file}")
+    with open(output_file, 'w', encoding='utf-8') as f:
+        json.dump(merged_data, f, indent=4, ensure_ascii=False)
+
+    print(f"Merged {len(merged_data)} records from {len(json_files) - errors} file(s) -> {output_file}")
+    if errors:
+        print(f"{errors} file(s) skipped due to errors.")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Recursively merge JSON files from a folder tree.")
+    parser.add_argument("folder", help="Root folder to search for JSON files")
+    parser.add_argument("--filename", default="messages.json", metavar="FILENAME",
+                        help="Filename pattern to match (default: messages.json)")
+    parser.add_argument("--output", help="Output file path (default: <folder>/merged_<filename>)")
+    args = parser.parse_args()
+
+    if not args.output:
+        args.output = os.path.join(args.folder, f"merged_{args.filename}")
+
+    merge_json(args.folder, args.filename, args.output)

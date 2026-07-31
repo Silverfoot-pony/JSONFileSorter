@@ -1,22 +1,37 @@
-import pandas as pd
 import json
+import argparse
+from pathlib import Path
 
-# Load the JSON data from a file
-with open(r'address_to_file.json', 'r', encoding="utf-8") as f: #place here the address to the JSON file to be filtered.
-    data = json.load(f)
 
-# Convert the loaded data to a pandas DataFrame
-df = pd.DataFrame(data)
+def filter_json(input_file, columns, output_file):
+    with open(input_file, 'r', encoding='utf-8') as f:
+        data = json.load(f)
 
-# Select only the '[column]' column
-df_contents = df[['[column]']]
+    if not isinstance(data, list):
+        raise ValueError("Input JSON must be a list of objects.")
 
-# Convert the DataFrame to a list of dictionaries (for JSON output)
-output_data = df_contents.to_dict(orient='records')
+    if data:
+        missing = [c for c in columns if c not in data[0]]
+        if missing:
+            raise KeyError(f"Column(s) not found in data: {', '.join(missing)}")
 
-# Save the result to a new JSON file with proper commas
-with open('JSONFiltered.json', 'w') as f: #specify the file name of the processed data.
-    json.dump(output_data, f, indent=4)
+    filtered = [{col: record[col] for col in columns if col in record} for record in data]
 
-# Print the filtered contents (optional)
-print(output_data)
+    with open(output_file, 'w', encoding='utf-8') as f:
+        json.dump(filtered, f, indent=4, ensure_ascii=False)
+
+    print(f"Filtered {len(filtered)} records -> {output_file}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Filter a JSON file to keep only specified columns.")
+    parser.add_argument("input", help="Path to the input JSON file")
+    parser.add_argument("--columns", nargs="+", required=True, metavar="COLUMN", help="Column name(s) to keep")
+    parser.add_argument("--output", help="Output file path (default: <input>_filtered.json)")
+    args = parser.parse_args()
+
+    if not args.output:
+        p = Path(args.input)
+        args.output = str(p.with_stem(p.stem + "_filtered"))
+
+    filter_json(args.input, args.columns, args.output)
